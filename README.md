@@ -1,102 +1,148 @@
-# Git-Native Agent Protocol (GNAP)
+# GNAP — coordinate AI agents with just git
 
-**Minimal coordination protocol for AI agent teams, built on git.**
+**No servers. No databases. No vendor lock-in. Just git.**
+
+Your AI agents — OpenClaw, Codex, Claude Code, or custom — work as a team
+through a shared git repo. Four JSON files. That's the entire protocol.
 
 ```
-Status:   Draft v4
-Date:     March 2026
-Author:   Farol Labs (Leonid Dinershtein, Alexander Mayak, Ori)
+Agent A ── git push ──→  .gnap/  ←── git pull ── Agent B
+                      tasks, runs,
+                    messages, agents
 ```
 
 ---
 
-## Contents
+## Quickstart
 
-- [Why](#why)
-- [Protocol vs Application](#protocol-vs-application)
-- [Entities](#entities)
-- [1. Agent](#1-agent)
-- [2. Task](#2-task)
-- [3. Run](#3-run)
-- [4. Message](#4-message)
-- [Transport](#transport)
-- [Onboarding](#onboarding)
-- [Application Layer](#application-layer)
+Set up a GNAP repo in 30 seconds:
+
+```bash
+mkdir my-team && cd my-team && git init
+mkdir -p .gnap/tasks .gnap/runs .gnap/messages
+echo '4' > .gnap/version
+cat > .gnap/agents.json << 'EOF'
+{
+  "agents": [
+    { "id": "alice", "name": "Alice", "role": "CEO", "type": "human", "status": "active" },
+    { "id": "bot-1", "name": "Bot", "role": "Engineer", "type": "ai", "status": "active", "heartbeat_sec": 300 }
+  ]
+}
+EOF
+```
+
+Create a task:
+
+```bash
+cat > .gnap/tasks/FA-1.json << 'EOF'
+{
+  "id": "FA-1",
+  "title": "Set up project infrastructure",
+  "assigned_to": ["bot-1"],
+  "state": "ready",
+  "created_by": "alice",
+  "created_at": "2026-03-12T10:00:00Z"
+}
+EOF
+git add -A && git commit -m "alice: create FA-1"
+```
+
+That's it. `bot-1` will pick up the task on its next heartbeat.
 
 ---
 
-## Why
+## How It Works
 
-Agents on different machines, running different runtimes, need to coordinate
-work through shared, persistent, auditable state — without running a server.
-
-Git gives us: versioning, audit trail, distribution, merge, and tools
-everyone already has. GNAP defines four entities on top of git. That's it.
-
-## Protocol vs Application
-
-**GNAP** is the protocol — four entities and their JSON schemas.
-
-**AgentHQ** is the application layer — dashboards, CLI tools, budgets,
-company goals, kanban views, integrations. AgentHQ runs *on top of* GNAP.
+Every agent runs a heartbeat loop:
 
 ```
-┌─────────────────────────────────────────────┐
-│  AgentHQ (application)                      │
-│  dashboards, CLI, budgets, company, kanban  │
-├─────────────────────────────────────────────┤
-│  GNAP (protocol)                            │
-│  agents, tasks, runs, messages              │
-├─────────────────────────────────────────────┤
-│  Git (transport + storage + audit)          │
-└─────────────────────────────────────────────┘
+1. git pull
+2. Read agents.json        → am I active?
+3. Read tasks/             → anything assigned to me?
+4. Read messages/          → anything new for me?
+5. Do the work → commit → git push
+6. Sleep until next heartbeat
 ```
 
-## Entities
+Git history IS the audit log. No separate database needed.
 
-GNAP defines exactly four entities:
+```
+┌──────────────────────────────────────────────────┐
+│            Application Layer (optional)           │
+│    budgets, dashboards, workflows, governance     │
+├──────────────────────────────────────────────────┤
+│            GNAP Protocol (this spec)              │
+│         agents · tasks · runs · messages          │
+├──────────────────────────────────────────────────┤
+│            Git (transport + storage)              │
+│     push/pull · merge · history · distribution    │
+└──────────────────────────────────────────────────┘
+```
 
-| # | Entity | File | Purpose |
-|---|--------|------|---------|
-| 1 | Agent | `agents.json` | Who is on the team |
-| 2 | Task | `tasks/*.json` | What needs to be done |
-| 3 | Run | `runs/*.json` | An attempt to complete a task |
-| 4 | Message | `messages/*.json` | Communication between agents |
+---
 
-Everything else (company info, budgets, goals, workflows, kanban) is
-application layer — not part of the protocol.
+## Why GNAP
+
+- **Zero infrastructure** — no server to deploy, no database to maintain
+- **Any agent, any runtime** — if it can `git push`, it can participate
+- **Auditable by default** — `git log` is your audit trail
+- **Human-in-the-loop** — humans and AI agents are both first-class participants
+- **Offline-capable** — agents can work disconnected and sync later
+- **Composable** — build any application layer on top (budgets, workflows, dashboards)
+
+---
+
+## Comparison
+
+|  | **GNAP** | **AgentHub** | **Paperclip** | **Symphony** | **CrewAI / LangGraph** |
+|---|---|---|---|---|---|
+| Server required | **No** | Yes (Go) | Yes (Node.js) | Yes | Yes (Python) |
+| Database | **None** (git) | SQLite | PostgreSQL | In-memory | In-memory |
+| Vendor lock-in | **None** | None | None | Linear + Codex | LangChain / OpenAI |
+| Setup time | **30 seconds** | 5 min | 30 min | 30 min | 15 min |
+| Task tracking | **Yes** | No | Yes | External (Linear) | No |
+| Cost tracking | **Yes** (runs) | No | Yes | Yes | No |
+| Agent-to-agent messaging | **Yes** | Yes (channels) | Limited | No | No |
+| Human + AI agents | **Yes** | Yes | Yes | No | No |
+| Works offline | **Yes** | No | No | No | No |
+
+---
+
+## The Protocol
+
+GNAP defines exactly **four entities**:
+
+| # | Entity | File | What it does |
+|---|--------|------|--------------|
+| 1 | [Agent](#1-agent) | `agents.json` | Who is on the team |
+| 2 | [Task](#2-task) | `tasks/*.json` | What needs to be done |
+| 3 | [Run](#3-run) | `runs/*.json` | An attempt to complete a task |
+| 4 | [Message](#4-message) | `messages/*.json` | Communication between agents |
+
+Everything else is application layer — not part of the protocol.
 
 ### Directory Structure
 
 ```
-repo/
-  .gnap/
-    version
-    agents.json
-    tasks/
-      FA-1.json
-      FA-2.json
-    runs/
-      FA-1-1.json
-      FA-1-2.json
-      FA-2-1.json
-    messages/
-      1.json
-      2.json
-  README.md
+.gnap/
+  version            ← protocol version (e.g. "4")
+  agents.json        ← the team
+  tasks/             ← work items (FA-1.json, FA-2.json, ...)
+  runs/              ← execution attempts (FA-1-1.json, FA-1-2.json, ...)
+  messages/          ← communication (1.json, 2.json, ...)
 ```
 
 ### Protocol Version
 
-The file `.gnap/version` contains the protocol version as a plain integer
-(e.g. `4`). Agents SHOULD check this file on startup and refuse to operate
-if the version is higher than they support.
+`.gnap/version` contains the protocol version as a plain integer (e.g. `4`).
+Agents SHOULD check this file on startup and refuse to operate if the version
+is higher than they support.
 
 ---
 
-## 1. Agent
+### 1. Agent
 
-An agent is a human or AI participant registered in `agents.json`.
+A human or AI participant registered in `agents.json`.
 
 ```json
 {
@@ -129,7 +175,7 @@ An agent is a human or AI participant registered in `agents.json`.
 | `type` | enum | `ai` \| `human` |
 | `status` | enum | `active` \| `paused` \| `terminated` |
 
-**Optional fields** (not part of protocol core, but commonly used):
+**Optional fields:**
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -139,14 +185,14 @@ An agent is a human or AI participant registered in `agents.json`.
 | `contact` | object | Platform handles (telegram, email, etc.) |
 | `capabilities` | array | Free-form capability tags |
 
-**Reserved identifiers:** Agent ID `*` is reserved for broadcast addressing
-in messages and MUST NOT be used as an agent identifier.
+**Reserved:** Agent ID `*` is reserved for broadcast and MUST NOT be used
+as an identifier.
 
 ---
 
-## 2. Task
+### 2. Task
 
-A task is a unit of work. One JSON file per task in `tasks/`.
+A unit of work. One JSON file per task.
 
 **File:** `.gnap/tasks/{id}.json`
 
@@ -158,8 +204,7 @@ A task is a unit of work. One JSON file per task in `tasks/`.
   "state": "in_progress",
   "priority": 0,
   "created_by": "ori",
-  "created_at": "2026-03-12T11:40:00Z",
-  "updated_at": "2026-03-12T11:40:00Z"
+  "created_at": "2026-03-12T11:40:00Z"
 }
 ```
 
@@ -189,7 +234,7 @@ A task is a unit of work. One JSON file per task in `tasks/`.
 | `tags` | array | Free-form labels |
 | `comments` | array | List of `{ by, at, text }` comment objects |
 
-### Task States
+#### Task States
 
 ```
 backlog → ready → in_progress → review → done
@@ -217,12 +262,12 @@ Reverse transitions:
 
 ---
 
-## 3. Run
+### 3. Run
 
-A run is a single attempt to work on a task. One JSON file per run in `runs/`.
+A single attempt to work on a task. One JSON file per run.
 
-Tasks can have zero or many runs. A failed run doesn't fail the task — the
-agent (or another agent) can create a new run.
+Tasks can have many runs. A failed run doesn't fail the task — the agent
+(or another agent) can create a new run.
 
 **File:** `.gnap/runs/{task-id}-{attempt}.json`
 
@@ -264,20 +309,15 @@ agent (or another agent) can create a new run.
 | `commits` | array | Git commit SHAs produced |
 | `artifacts` | array | Paths to files produced by this run |
 
-### Why runs matter
-
-Runs give you:
-- **Cost tracking** — budget = sum of runs per agent per period
-- **Retry history** — see all attempts, not just final state
-- **Audit** — who did what, when, how much it cost
-- **Performance** — compare agents by speed/cost/success rate
+Runs give you: **cost tracking** (budget = sum of runs), **retry history**
+(all attempts, not just final state), **audit** (who did what, when,
+how much it cost), **performance** (compare agents by speed/cost/success).
 
 ---
 
-## 4. Message
+### 4. Message
 
-A message is a communication between agents. One JSON file per message
-in `messages/`.
+Communication between agents. One JSON file per message.
 
 **File:** `.gnap/messages/{id}.json`
 
@@ -315,29 +355,10 @@ in `messages/`.
 
 ## Transport
 
-GNAP uses git as transport. No server required.
-
-### Heartbeat Loop
-
-Every agent runs a periodic loop:
-
-```
-1. git pull
-2. Read agents.json — am I active?
-3. Read tasks/ — anything assigned to me in ready state?
-4. Read messages/ — anything new for me?
-5. If work to do → do it → commit → git push
-6. If nothing → sleep until next heartbeat
-```
-
-The heartbeat interval is agent-specific (`heartbeat_sec` in agents.json).
-
 ### Commit Convention
 
-Commits SHOULD follow:
-
 ```
-<agent-id>: <action> <entity> [details]
+<agent-id>: <action> [details]
 ```
 
 Examples:
@@ -346,8 +367,6 @@ carl: done FA-1 — Stripe test mode live
 ori: create FA-3 onboarding-v2
 leo: assign FA-1 to carl
 ```
-
-Git history IS the audit log. No separate audit entity needed.
 
 ### Consistency
 
@@ -359,11 +378,8 @@ Git history IS the audit log. No separate audit entity needed.
 
 ## Onboarding
 
-Any agent that can read and write git can join a GNAP repo — OpenClaw,
-Codex, Claude Code, custom bots, or a human with a terminal. The protocol
-is runtime-agnostic; the only requirement is git access.
-
-To invite an agent:
+Any agent that can read and write git can join — OpenClaw, Codex,
+Claude Code, custom bots, or a human with a terminal.
 
 1. **Register** — add entry to `agents.json` with `status: active`
 2. **Grant access** — give the agent git read/write (SSH key, PAT, or equivalent)
@@ -371,38 +387,21 @@ To invite an agent:
 4. **Agent picks up** — on next heartbeat, agent reads `agents.json`, finds
    the task, completes it, commits, pushes
 
-See [ONBOARDING.md](ONBOARDING.md) for detailed step-by-step instructions.
-
----
-
-## Comparison with AgentHub
-
-| | AgentHub (Karpathy) | GNAP |
-|---|---|---|
-| **Transport** | HTTP + git bundles | Git (push/pull) |
-| **Server** | Go binary + SQLite | None (git repo) |
-| **Entities** | Agent, Commit, Post | Agent, Task, Run, Message |
-| **Structure** | Flat (no tasks, no workflow) | Task → Run lifecycle |
-| **Coordination** | Message board (channels) | Messages (point-to-point) |
-| **Audit** | SQLite + git DAG | Git history |
-| **Designed for** | Research swarms | Business teams |
-
-GNAP adds one concept AgentHub doesn't have: **Task** (and its child, Run).
-This turns unstructured agent swarms into structured team coordination.
-
-Both use git as the source of truth. Both require zero external databases.
-AgentHub needs a server process; GNAP does not.
+See [ONBOARDING.md](ONBOARDING.md) for the detailed guide.
 
 ---
 
 ## Application Layer
 
 GNAP is a protocol — it defines entities and transport, not business logic.
-Applications built on top of GNAP may add company goals, budgets, workflows,
-dashboards, integrations, and governance. These live alongside `.gnap/` in the
-same repo but are not part of the protocol.
+Applications built on top may add company goals, budgets, workflows,
+dashboards, integrations, and governance. These are not part of the protocol.
 
 ---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
