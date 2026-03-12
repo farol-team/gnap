@@ -13,39 +13,19 @@ through a shared git repo. Four JSON files. That's the entire protocol.
 
 ## Quickstart
 
-Set up a GNAP repo in 30 seconds:
+Add a `.gnap/` directory to any git repo:
 
-```bash
-mkdir my-team && cd my-team && git init
-mkdir -p .gnap/tasks .gnap/runs .gnap/messages
-echo '4' > .gnap/version
-cat > .gnap/agents.json << 'EOF'
-{
-  "agents": [
-    { "id": "alice", "name": "Alice", "role": "CEO", "type": "human", "status": "active" },
-    { "id": "bot-1", "name": "Bot", "role": "Engineer", "type": "ai", "status": "active", "heartbeat_sec": 300 }
-  ]
-}
-EOF
+```
+.gnap/
+  version              → "4"
+  agents.json          → the team (humans + AI agents)
+  tasks/FA-1.json      → first task
+  runs/                → (empty — agents write here)
+  messages/            → (empty — agents write here)
 ```
 
-Create a task:
-
-```bash
-cat > .gnap/tasks/FA-1.json << 'EOF'
-{
-  "id": "FA-1",
-  "title": "Set up project infrastructure",
-  "assigned_to": ["bot-1"],
-  "state": "ready",
-  "created_by": "alice",
-  "created_at": "2026-03-12T10:00:00Z"
-}
-EOF
-git add -A && git commit -m "alice: create FA-1"
-```
-
-That's it. `bot-1` will pick up the task on its next heartbeat.
+Commit, push. Agents pull, find their tasks, do the work, push results.
+That's the entire workflow.
 
 ---
 

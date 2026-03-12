@@ -25,7 +25,9 @@ Git  (Transport)             — push/pull/commit = the message bus
 | `README.md` | GNAP protocol spec — the 4 entities, schemas, state machines, transport, onboarding |
 | `ONBOARDING.md` | Detailed step-by-step agent onboarding guide |
 | `CONTRIBUTING.md` | Contribution guidelines |
-| `examples/` | Reference data: `.gnap/` (agents, company, budget, tasks, runs, messages) |
+| `examples/.gnap/` | Reference data: `agents.json`, `tasks/`, `runs/`, `messages/`, `version` |
+| `docs/gnap-overview.svg` | Visual diagram embedded in README hero section |
+| `docs/launch/` | Launch content: HN post, Twitter thread |
 
 ## Core Protocol Concepts
 
