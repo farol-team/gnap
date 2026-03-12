@@ -27,7 +27,6 @@ Git  (Transport)             — push/pull/commit = the message bus
 | `CONTRIBUTING.md` | Contribution guidelines |
 | `examples/.gnap/` | Reference data: `agents.json`, `tasks/`, `runs/`, `messages/`, `version` |
 | `docs/gnap-overview.svg` | Visual diagram embedded in README hero section |
-| `docs/launch/` | Launch content: HN post, Twitter thread |
 
 ## Core Protocol Concepts
 
