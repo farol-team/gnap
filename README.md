@@ -393,7 +393,7 @@ and reporting relationships.
 | `runtime` | string | MAY | Runtime environment: `openclaw` / `codex` / `claude` / `custom`. AI agents only |
 | `reports_to` | string | MAY | Agent ID of direct manager. `null` = top-level. Creates a tree |
 | `capabilities` | array | MAY | List of capability tags (free-form strings) |
-| `heartbeat` | object | MAY | Heartbeat configuration (see §3.3). Shorthand: `heartbeat_sec` (integer) sets `hq_poll_sec` only |
+| `heartbeat_sec` | integer | MAY | Polling interval in seconds. AI agents only. Default: 1800 |
 | `budget_monthly_usd` | number | MAY | Monthly spending limit in USD. AI agents only |
 | `status` | enum | MUST | `active` \| `paused` \| `terminated` |
 | `contact` | object | MAY | Platform-specific contact handles |
@@ -747,76 +747,6 @@ push), the agent operates on a consistent snapshot of state. Conflicts are
 detected at push time and resolved by re-reading state.
 
 ---
-
-### 3.5 Heartbeat Architecture
-
-An agent's heartbeat has two layers with different frequencies and costs:
-
-#### Light poll (high frequency, zero LLM cost)
-
-A bash script runs every **N minutes** via system cron. It does:
-1. `git pull --rebase`
-2. Count `ready` tasks assigned to this agent
-3. Count unread messages for this agent
-4. If anything new → **wake the agent** (trigger LLM session)
-5. If nothing new → exit silently
-
-This costs zero LLM tokens. It's pure git + JSON parsing.
-
-**Recommended interval:** 5 minutes (`hq_poll_sec: 300`)
-
-#### Full heartbeat (low frequency, LLM cost)
-
-The agent's LLM session runs every **N minutes**. It does the full
-HEARTBEAT.md workflow: check tasks, process tensions, do work, report,
-maintain memory.
-
-**Recommended interval:** 30 minutes (`full_check_sec: 1800`)
-
-#### Configuration in org.json
-
-```json
-{
-  "id": "carl",
-  "heartbeat": {
-    "hq_poll_sec": 300,
-    "full_check_sec": 1800
-  }
-}
-```
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `hq_poll_sec` | integer | 300 | Light poll interval (bash, no LLM) |
-| `full_check_sec` | integer | 1800 | Full LLM heartbeat interval |
-
-Backward compatible: `"heartbeat_sec": 1800` is equivalent to
-`"heartbeat": { "hq_poll_sec": 1800, "full_check_sec": 1800 }`.
-
-#### Wake mechanisms
-
-When the light poller detects new work, it wakes the agent. Supported
-wake mechanisms (runtime-dependent):
-
-| Mechanism | How | When |
-|---|---|---|
-| OpenClaw wake | `openclaw wake` CLI or cron wake event | Same machine |
-| Webhook | `POST /api/wake` to agent's gateway | Remote / Fly.io |
-| Telegram message | Send trigger message to agent's bot | Any network |
-| File signal | Write to a watched file | Same machine |
-
-The wake mechanism is not part of the GNAP protocol itself — it is
-runtime-specific. GNAP only specifies the polling intervals.
-
-#### Reference implementation
-
-See `gnap-poll.sh` — a lightweight poller that can run as a system cron
-job. Usage:
-
-```bash
-# Crontab entry: poll every 5 minutes
-*/5 * * * * /path/to/gnap-poll.sh carl /tmp/farol-hq "openclaw wake"
-```
 
 ## 4. GNAP Session Protocol (GNSP)
 
