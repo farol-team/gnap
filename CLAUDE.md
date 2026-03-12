@@ -4,45 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-GNAP (Git-Native Agent Protocol) — a specification and tooling for coordinating AI agent teams using git as the only transport/storage layer. No server required.
+GNAP (Git-Native Agent Protocol) — a specification for coordinating AI agent teams using git as the only transport/storage layer. No server required.
 
-**Status:** Draft v3, March 2026. This is a protocol spec repo, not a traditional software project.
+**Status:** Draft v4, March 2026. This is a protocol spec repo, not a traditional software project.
 
-## Two-Layer Architecture
+## Architecture
 
 ```
-GNAL (Application Layer)  — workflows, playbooks, policies, events, knowledge
-GNAP (Protocol Layer)     — 4 entities: Agent, Task, Run, Message
-Git  (Transport)          — push/pull/commit = the message bus
+AgentHQ (Application Layer)  — budgets, dashboards, workflows (separate repo)
+GNAP (Protocol Layer)        — 4 entities: Agent, Task, Run, Message
+Git  (Transport)             — push/pull/commit = the message bus
 ```
 
-- **Protocol (GNAP core):** Defined in `README.md`. Four JSON entities live in `.gnap/` — `agents.json`, `tasks/*.json`, `runs/*.json`, `messages/*.json`. These are the atoms every agent must understand.
-- **Application layer (GNAL):** Defined in `APPLICATION.md`. Markdown-based business logic in `app/` — workflows, playbooks, policies, templates, events, knowledge. Optional but recommended.
-- **Agent communication (kanban):** Defined in `AGENTS-PROTOCOL.md`. Describes how agents read/write `kanban-data.json` via GitHub Contents API with SHA-based optimistic locking.
+**Protocol (GNAP core):** Defined in `README.md`. Four JSON entities live in `.gnap/` — `agents.json`, `tasks/*.json`, `runs/*.json`, `messages/*.json`. Protocol version in `.gnap/version`.
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `README.md` | GNAP protocol spec — the 4 entities, schemas, state machines, transport |
-| `APPLICATION.md` | GNAL companion spec — workflows, playbooks, policies, events, knowledge |
-| `AGENTS-PROTOCOL.md` | Agent communication protocol for the farol.team kanban |
-| `ONBOARDING.md` | How to invite and onboard a new agent to an HQ |
-| `gnap.sh` | CLI tool for kanban operations (read, create, move, update, block) |
-| `examples/` | Reference data: `.gnap/` (org, company, budget, tasks, runs, messages) and `app/` (workflows, playbooks, policies, events) |
-
-## CLI Tool
-
-`gnap.sh` operates on `kanban-data.json` via GitHub API. Requires `GNAP_GITHUB_TOKEN` env var for writes.
-
-```bash
-./gnap.sh read                              # Read all tasks (JSON)
-./gnap.sh my-tasks <agent-id>               # List tasks for agent
-./gnap.sh create <agent> <slug> <title> <tag> [col] [desc]
-./gnap.sh move <card-id> <column> <agent>
-./gnap.sh update <card-id> <field> <value> <agent>
-./gnap.sh block <card-id> <reason> <agent>
-```
+| `README.md` | GNAP protocol spec — the 4 entities, schemas, state machines, transport, onboarding |
+| `ONBOARDING.md` | Detailed step-by-step agent onboarding guide |
+| `gnap.sh` | CLI tool for GNAP operations (read, create, move, update, block) |
+| `examples/` | Reference data: `.gnap/` (agents, company, budget, tasks, runs, messages) |
 
 ## Core Protocol Concepts
 
@@ -50,14 +33,14 @@ Git  (Transport)          — push/pull/commit = the message bus
 
 **Commit convention:** `<agent-id>: <action> <entity> [details]` — git history IS the audit log.
 
-**Heartbeat loop:** Each agent polls on `heartbeat_sec` interval: pull → check status → check tasks → check messages → work → commit → push.
+**Heartbeat loop:** Each agent polls on `heartbeat_sec` interval (default 300s): pull → check status → check tasks → check messages → work → commit → push.
 
-**Conflict resolution:** SHA-based optimistic locking. On conflict: re-read, re-apply, retry (max 3).
+**Conflict resolution:** git merge/rebase. On conflict: pull + rebase + retry push (max 3).
 
 ## Editing Guidelines
 
-- This is a spec repo. Changes to `README.md` or `APPLICATION.md` change the protocol/application-layer definition.
+- This is a spec repo. Changes to `README.md` change the protocol definition.
 - JSON schemas in the spec docs are normative — keep entity examples consistent across all docs.
 - The four GNAP entities (Agent, Task, Run, Message) are intentionally minimal. Resist adding new protocol-level entities.
-- `examples/` should always be valid instances of the schemas defined in the specs.
-- `workflow.md` in `.gnap/` uses `{{mustache}}` template syntax for agent prompt interpolation.
+- `examples/` should always be valid instances of the schemas defined in the spec.
+- Operational concerns (budget enforcement, stall detection, concurrency control) belong in AgentHQ, not the protocol.

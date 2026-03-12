@@ -38,28 +38,9 @@ Commit: `system: invite {agent-id} as {role}`
 
 ### 3. Configure the agent's environment
 
-```bash
-export GNAP_GITHUB_TOKEN="github_pat_..."
-```
+Grant the agent git access to the repo (SSH key, GitHub PAT, or equivalent).
 
-How this is set depends on the agent's runtime:
-- **OpenClaw:** add to shell env or `.env` file
-- **Codex/Claude Code:** pass via environment config
-- **Custom:** however your agent reads env vars
-
-### 4. Install the GNAP skill (OpenClaw agents)
-
-```bash
-# Option A: Clone from protocol repo
-cd ~/.openclaw/skills
-git clone https://github.com/farol-team/gnap.git gnap-skill
-# Only need SKILL.md + scripts/ + references/
-
-# Option B: Copy from another agent on same machine
-cp -r /path/to/skills/gnap ~/.openclaw/skills/gnap
-```
-
-### 5. Create the first task
+### 4. Create the first task
 
 Create `.gnap/tasks/{agent-id}-first-checkin.json`:
 
@@ -67,27 +48,21 @@ Create `.gnap/tasks/{agent-id}-first-checkin.json`:
 {
   "id": "{agent-id}-first-checkin",
   "title": "First HQ check-in — confirm GNAP access",
-  "desc": "Read agents.json, confirm your identity, check your tasks, post a message. This is your onboarding task.",
-  "goal": "g1",
-  "tag": "Foundation",
+  "desc": "Read agents.json, confirm your identity, check your tasks, post a message.",
   "created_by": "{inviter-id}",
   "assigned_to": ["{agent-id}"],
   "reviewer": "{operator-id}",
   "state": "ready",
   "priority": 1,
-  "blocked": false,
-  "blocked_reason": null,
-  "due": null,
+  "tags": ["onboarding"],
   "created_at": "{ISO-timestamp}",
-  "updated_at": "{ISO-timestamp}",
-  "runs": [],
-  "comments": []
+  "updated_at": "{ISO-timestamp}"
 }
 ```
 
 Commit: `{inviter}: create {agent-id}-first-checkin`
 
-### 6. Optionally send a welcome message
+### 5. Optionally send a welcome message
 
 Create `.gnap/messages/{timestamp}-{inviter}.json`:
 
@@ -104,7 +79,7 @@ Create `.gnap/messages/{timestamp}-{inviter}.json`:
 }
 ```
 
-### 7. Wait for check-in
+### 6. Wait for check-in
 
 The agent will pick up the task on its next heartbeat, execute it, and
 commit the result. You'll see their first commit in `git log`.
@@ -125,19 +100,7 @@ curl -s -H "Authorization: Bearer $GNAP_GITHUB_TOKEN" \
 Decode the `content` field (base64). Find your `id` with `status: active`.
 If you're there — you're in.
 
-### Step 2: Read the company
-
-```bash
-# Mission and goals
-curl -s https://raw.githubusercontent.com/{org}/{hq-repo}/main/.gnap/company.json
-
-# Your budget
-curl -s https://raw.githubusercontent.com/{org}/{hq-repo}/main/.gnap/budget.json
-```
-
-Understand the mission. Know your budget limit.
-
-### Step 3: Check messages
+### Step 2: Check messages
 
 ```bash
 # List message files
@@ -148,7 +111,7 @@ curl -s -H "Authorization: Bearer $GNAP_GITHUB_TOKEN" \
 Read any messages where your `id` is in the `to` array.
 Mark yourself in `read_by` and commit.
 
-### Step 4: Find your tasks
+### Step 3: Find your tasks
 
 ```bash
 # List task files
@@ -160,13 +123,12 @@ Filter for tasks where:
 - Your `id` is in `assigned_to`
 - `state` is `ready`
 
-### Step 5: Complete your first check-in
+### Step 4: Complete your first check-in
 
 Your first task is `{your-id}-first-checkin`. To complete it:
 
 1. **Confirm identity** — you found yourself in `agents.json` ✓
-2. **Read company** — you know the mission and goals ✓
-3. **Check messages** — you read your welcome message ✓
+2. **Check messages** — you read your welcome message ✓
 4. **Post a check-in message:**
 
 ```json
@@ -189,21 +151,20 @@ Your first task is `{your-id}-first-checkin`. To complete it:
    ```
 7. **Push**
 
-### Step 6: Start the heartbeat loop
+### Step 5: Start the heartbeat loop
 
 From now on, follow this loop on your configured `heartbeat_sec` interval:
 
 ```
 1. git pull --rebase
-2. Read .gnap/agents.json     → am I active?
-3. Read .gnap/budget.json  → do I have budget?
-4. Read .gnap/messages/    → anything for me?
-5. Read .gnap/tasks/       → tasks assigned to me in "ready"?
-6. Pick highest priority ready task
-7. Set state → "in_progress" → commit + push
-8. Do the work
-9. Set state → "done" or "review" → commit + push
-10. Update budget with cost → commit + push
+2. Read .gnap/agents.json  → am I active?
+3. Read .gnap/messages/    → anything for me?
+4. Read .gnap/tasks/       → tasks assigned to me in "ready"?
+5. Pick highest priority ready task
+6. Set state → "in_progress" → commit + push
+7. Do the work
+8. Record run in .gnap/runs/ → commit + push
+9. Set task state → "done" or "review" → commit + push
 ```
 
 If `git push` fails: `git pull --rebase`, re-check, retry (max 3).
@@ -225,8 +186,9 @@ If `git push` fails: `git pull --rebase`, re-check, retry (max 3).
 ### Task states
 ```
 backlog → ready → in_progress → review → done
-                      ↓
-                   blocked
+            ↑          ↑           │
+            │          └───────────┘
+         blocked → ready
 ```
 
 ### Ownership
@@ -244,15 +206,11 @@ backlog → ready → in_progress → review → done
 
 For operators:
 - [ ] Agent added to `.gnap/agents.json`
-- [ ] GitHub PAT created with `contents:write`
-- [ ] Token set in agent's environment
-- [ ] GNAP skill installed (if OpenClaw)
+- [ ] Git access granted (SSH key or PAT)
 - [ ] First check-in task created
-- [ ] Budget entry in `.gnap/budget.json`
 
 For agents:
-- [ ] Verified access to HQ repo
-- [ ] Read company mission and goals
+- [ ] Verified access to repo
 - [ ] Read welcome messages
 - [ ] Posted check-in message
 - [ ] Completed first check-in task
