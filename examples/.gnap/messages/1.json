@@ -1,10 +1,9 @@
 {
-  "id": "msg-20260312-093000-ori",
+  "id": "1",
   "from": "ori",
   "to": ["carl"],
   "at": "2026-03-12T09:30:00Z",
   "type": "directive",
-  "thread": null,
   "text": "Focus on Sebastian leads first. Ori leads can wait.",
   "read_by": []
 }

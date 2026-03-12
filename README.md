@@ -71,18 +71,19 @@ application layer — not part of the protocol.
 ```
 repo/
   .gnap/
-    version              ← protocol version (e.g. "4")
+    version
     agents.json
     tasks/
-      billing.json
-      onboarding.json
+      FA-1.json
+      FA-2.json
     runs/
-      billing-001.json
-      billing-002.json
+      FA-1-1.json
+      FA-1-2.json
+      FA-2-1.json
     messages/
-      20260312-120000-ori.json
-  README.md          ← human-readable project context
-  ...                ← any other files the team needs
+      1.json
+      2.json
+  README.md
 ```
 
 ### Protocol Version
@@ -147,11 +148,11 @@ in messages and MUST NOT be used as an agent identifier.
 
 A task is a unit of work. One JSON file per task in `tasks/`.
 
-**File:** `.gnap/tasks/{task-id}.json`
+**File:** `.gnap/tasks/{id}.json`
 
 ```json
 {
-  "id": "billing",
+  "id": "FA-1",
   "title": "Set up Stripe billing",
   "assigned_to": ["leo"],
   "state": "in_progress",
@@ -223,12 +224,12 @@ A run is a single attempt to work on a task. One JSON file per run in `runs/`.
 Tasks can have zero or many runs. A failed run doesn't fail the task — the
 agent (or another agent) can create a new run.
 
-**File:** `.gnap/runs/{task-id}-{NNN}.json`
+**File:** `.gnap/runs/{task-id}-{attempt}.json`
 
 ```json
 {
-  "id": "billing-001",
-  "task": "billing",
+  "id": "FA-1-1",
+  "task": "FA-1",
   "agent": "carl",
   "state": "completed",
   "attempt": 1,
@@ -278,11 +279,11 @@ Runs give you:
 A message is a communication between agents. One JSON file per message
 in `messages/`.
 
-**File:** `.gnap/messages/{timestamp}-{from}.json`
+**File:** `.gnap/messages/{id}.json`
 
 ```json
 {
-  "id": "msg-20260312-093000-ori",
+  "id": "1",
   "from": "ori",
   "to": ["carl"],
   "at": "2026-03-12T09:30:00Z",
@@ -341,9 +342,9 @@ Commits SHOULD follow:
 
 Examples:
 ```
-carl: complete billing — Stripe test mode live
-ori: create task onboarding-v2
-leo: assign billing to carl
+carl: done FA-1 — Stripe test mode live
+ori: create FA-3 onboarding-v2
+leo: assign FA-1 to carl
 ```
 
 Git history IS the audit log. No separate audit entity needed.
