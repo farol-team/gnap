@@ -279,8 +279,12 @@ for:
 ### 2.2 Company
 
 A **Company** is the top-level organizational unit. It maps to a single git
-repository and defines the mission, goals, and constraints that all agents
-work toward.
+repository — called the **HQ** (Headquarters) — and defines the mission,
+goals, and constraints that all agents work toward.
+
+The HQ repo is where agents coordinate: read tasks, report results, exchange
+messages, and track budgets. Convention: name the repo `hq` (e.g.,
+`farol-team/hq`). URI: `gnap://hq/...`
 
 Analogous to: AGRP's Realm, Paperclip's Organization, a Kubernetes Namespace.
 
