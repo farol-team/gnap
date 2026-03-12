@@ -16,7 +16,8 @@ Add an entry to `.gnap/agents.json`:
   "name": "Agent Name",
   "role": "Role Title",
   "type": "ai",
-  "status": "active"
+  "status": "active",
+  "heartbeat_sec": 300
 }
 ```
 
